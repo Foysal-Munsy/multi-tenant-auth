@@ -8,6 +8,7 @@ import {
   OrganizationSchema,
 } from 'src/schemas/organization.schema';
 import { UserOrgMap, UserOrgMapSchema } from 'src/schemas/user-org-map.schema';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
@@ -17,6 +18,11 @@ import { UserOrgMap, UserOrgMapSchema } from 'src/schemas/user-org-map.schema';
       { name: Organization.name, schema: OrganizationSchema },
       { name: UserOrgMap.name, schema: UserOrgMapSchema },
     ]),
+    // 2. JWT configure
+    JwtModule.register({
+      secret: 'JWT_SECRET',
+      signOptions: { expiresIn: '1h' },
+    }),
   ],
   controllers: [AuthController],
   providers: [AuthService],
