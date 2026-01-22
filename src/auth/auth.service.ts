@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -8,6 +9,7 @@ import { User } from 'src/schemas/user.schema';
 import * as bcrypt from 'bcrypt';
 
 import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
@@ -43,5 +45,42 @@ export class AuthService {
     }
 
     return { message: 'User registered successfully' };
+  }
+
+  async login(dto: LoginDto) {
+    const user = await this.userModel.findOne({ email: dto.email });
+    if (!user) throw new UnauthorizedException();
+
+    const valid = await bcrypt.compare(dto.password, user.password);
+    if (!valid) throw new UnauthorizedException();
+
+    // fetch user-organization
+    const mappings = await this.mapModel.find({ user_id: user._id });
+    // extract org id
+    const orgIds = mappings.map((m) => m.org_id);
+    // fetch organization details
+    const orgs = await this.orgModel.find({
+      org_id: { $in: orgIds },
+    });
+
+    const organizations = orgs.map((org) => ({
+      org_id: org.org_id,
+      org_name: org.org_name,
+    }));
+
+    const payload = {
+      sub: user._id,
+      email: user.email,
+      role: user.role,
+      organizations,
+    };
+
+    return {
+      access_token: this.jwtService.sign(payload),
+    };
+  }
+
+  decode(token: string) {
+    return this.jwtService.decode(token);
   }
 }
