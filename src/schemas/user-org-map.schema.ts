@@ -14,7 +14,7 @@ export class UserOrgMap {
   @Prop({ type: Types.ObjectId, ref: 'Organization', required: true })
   org_id: Types.ObjectId;
 
-  @Prop({ required: true, default: 'member' })
+  @Prop({ required: true, default: 'intern' })
   role: string;
 }
 

@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -50,7 +54,7 @@ export class AuthService {
     await this.mapModel.create({
       user_id: user._id,
       org_id: organization._id,
-      role: 'member',
+      role: 'intern',
     });
 
     return { message: 'User registered successfully' };
@@ -97,4 +101,16 @@ export class AuthService {
   //   decode(token: string) {
   //     return this.jwtService.decode(token);
   //   }
+
+  async createOrganization(orgName: string) {
+    const existing = await this.orgModel.findOne({ org_name: orgName });
+
+    if (existing) {
+      throw new BadRequestException('Organization already exists');
+    }
+
+    return this.orgModel.create({
+      org_name: orgName,
+    });
+  }
 }

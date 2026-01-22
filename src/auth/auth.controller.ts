@@ -17,6 +17,7 @@ export class AuthController {
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
+
   @UseGuards(OrganizationGuard)
   @Get('organization-details')
   getOrganization(@Req() req) {
@@ -26,6 +27,10 @@ export class AuthController {
     };
   }
 
+  @Post('create-org')
+  createOrganization(@Body('org_name') orgName: string) {
+    return this.authService.createOrganization(orgName);
+  }
   // @Get('me')
   // me(@Headers('authorization') auth: string) {
   //   const token = auth.replace('Bearer ', '');
