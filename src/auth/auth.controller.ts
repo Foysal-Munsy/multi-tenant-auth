@@ -1,8 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { OrganizationGuard } from './guards/organization.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -16,6 +16,14 @@ export class AuthController {
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+  @UseGuards(OrganizationGuard)
+  @Get('organization-details')
+  getOrganization(@Req() req) {
+    return {
+      user: req.user,
+      organization: req.organization,
+    };
   }
 
   // @Get('me')

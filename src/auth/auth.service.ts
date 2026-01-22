@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
@@ -80,7 +79,7 @@ export class AuthService {
     };
   }
 
-  decode(token: string) {
-    return this.jwtService.decode(token);
-  }
+  //   decode(token: string) {
+  //     return this.jwtService.decode(token);
+  //   }
 }
