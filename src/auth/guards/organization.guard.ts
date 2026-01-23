@@ -31,45 +31,50 @@ export class OrganizationGuard implements CanActivate {
     }
 
     // 6. Extract raw JWT (remove "Bearer ")
-    const token = authHeader.replace('Bearer ', '');
+    // Expected format: Authorization: Bearer <token>
+    const token = authHeader.replace('Bearer ', '').trim();
 
-    // 7. Decode the JWT payload
-    const payload = this.jwtService.decode(token);
+    if (!token) {
+      throw new UnauthorizedException('Authorization token missing');
+    }
 
-    // 8. If token cannot be decoded, block request
-    if (!payload) {
+    // 7. Verify JWT (checks signature + expiration)
+    // NOTE: verify() is the secure alternative to decode(); decode() does NOT validate.
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(token);
+    } catch {
       throw new UnauthorizedException('Invalid token');
     }
 
-    // 9. Extract organizations array from token
+    // 8. Extract organizations array from token
     const organizations = payload['organizations'];
 
-    // 10. If organizations not present, block request
+    // 9. If organizations not present, block request
     if (!Array.isArray(organizations)) {
       throw new UnauthorizedException('No organizations found in token');
     }
 
-    // 11. Check if requested organization exists in token
+    // 10. Check if requested organization exists in token
     const organization = organizations.find((org) => org.org_id === orgHeader);
 
-    // 12. If not found, user does not belong to this org
+    // 11. If not found, user does not belong to this org
     if (!organization) {
       throw new UnauthorizedException(
         'User is not affiliated with this organization',
       );
     }
 
-    // 13. Attach user info to request
+    // 12. Attach minimal user identity to request for downstream handlers
     request.user = {
       id: payload['sub'],
       email: payload['email'],
-      role: payload['role'],
     };
 
-    // 14. Attach active organization to request
+    // 13. Attach active organization (tenant context + org-scoped role)
     request.organization = organization;
 
-    // 15. Allow request to proceed
+    // 14. Allow request to proceed
     return true;
   }
 }

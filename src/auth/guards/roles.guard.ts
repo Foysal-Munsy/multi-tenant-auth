@@ -45,3 +45,17 @@ export class RolesGuard implements CanActivate {
     return true;
   }
 }
+
+/**
+ * Read required roles from decorator
+ * Compares with user role
+ * Blocks request if role does not match
+ * ------
+ * ExecutionContext: a wrapper to access the current request (HTTP/WebSocket/GraphQL)
+ *  Reflector: utility for reading metadata (the stuff set by setMetadata)
+ *  getAllAndOverride behavior:
+    If both class + method have roles, method-level usually overrides class-level.
+  * includes(): checks if the user’s role     matches any allowed role.
+    If not, block with 403 and show which roles were required.
+
+ */
