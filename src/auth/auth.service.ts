@@ -32,21 +32,25 @@ export class AuthService {
     // - If org does NOT exist yet: create it and make the registering user the 'owner'
     // - If org already exists: register user as a normal 'member'
 
-    // 0. Enforce unique email (User schema has unique index, but we return a clean 400)
-    const existingUser = await this.userModel.findOne({ email: dto.email });
-    if (existingUser) {
-      throw new BadRequestException('Email already registered');
+    // 0. If the email already exists, treat this as "join/create another org"
+    // and verify password instead of blocking registration.
+    let user = await this.userModel.findOne({ email: dto.email });
+    if (user) {
+      const valid = await bcrypt.compare(dto.password, user.password);
+      if (!valid) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+    } else {
+      // 1. Hash password
+      const hashedPassword = await bcrypt.hash(dto.password, 10);
+
+      // 2. Create user (first-time signup)
+      user = await this.userModel.create({
+        name: dto.name,
+        email: dto.email,
+        password: hashedPassword,
+      });
     }
-
-    // 1. Hash password
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
-
-    // 2. Create user
-    const user = await this.userModel.create({
-      name: dto.name,
-      email: dto.email,
-      password: hashedPassword,
-    });
 
     // 3. Find organization by name
     let organization = await this.orgModel.findOne({
@@ -108,11 +112,36 @@ export class AuthService {
       .populate('org_id');
 
     // 4. Build organization payload from mappings
-    const organizations = mappings.map((m: any) => ({
-      org_id: m.org_id._id,
-      org_name: m.org_id.org_name,
-      role: m.role,
-    }));
+    // We keep ONLY roles[] (array) per organization.
+    // If duplicates exist in DB for the same (user, org), we merge roles into one array.
+    const byOrgId = new Map<
+      string,
+      { org_id: any; org_name: string; roles: string[] }
+    >();
+
+    for (const m of mappings as any[]) {
+      const orgId = String(m.org_id?._id);
+      const orgName = m.org_id?.org_name;
+      const role = m.role;
+
+      if (!orgId) continue;
+
+      const existing = byOrgId.get(orgId);
+      if (!existing) {
+        byOrgId.set(orgId, {
+          org_id: m.org_id._id,
+          org_name: orgName,
+          roles: [role],
+        });
+        continue;
+      }
+
+      if (!existing.roles.includes(role)) {
+        existing.roles.push(role);
+      }
+    }
+
+    const organizations = Array.from(byOrgId.values());
 
     // 5. Create JWT payload
     const payload = {

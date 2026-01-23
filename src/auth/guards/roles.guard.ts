@@ -33,10 +33,15 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('Organization context missing');
     }
 
-    // 5. Check role
-    const userRole = organization.role;
+    // 5. Check roles (array only)
+    // OrganizationGuard must attach organization.roles as an array of strings.
+    const userRoles: string[] = organization.roles;
+    if (!Array.isArray(userRoles)) {
+      throw new ForbiddenException('Organization roles missing');
+    }
 
-    if (!requiredRoles.includes(userRole)) {
+    const allowed = requiredRoles.some((r) => userRoles.includes(r));
+    if (!allowed) {
       throw new ForbiddenException(
         `Access denied. Required roles: ${requiredRoles.join(', ')}`,
       );

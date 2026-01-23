@@ -19,3 +19,7 @@ export class UserOrgMap {
 }
 
 export const UserOrgMapSchema = SchemaFactory.createForClass(UserOrgMap);
+
+// Prevent duplicate memberships for the same user in the same organization.
+// This ensures you don't end up with multiple roles for one (user, org) pair.
+UserOrgMapSchema.index({ user_id: 1, org_id: 1 }, { unique: true });
