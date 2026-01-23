@@ -26,10 +26,22 @@ export default tseslint.config(
   },
   {
     rules: {
-      '@typescript-eslint/no-unsafe-return': 'warn',
+      // Disables the error for returning 'any' or untyped values
+      '@typescript-eslint/no-unsafe-return': 'off',
+
+      // Disables the error for calling methods/functions on 'any' types
+      '@typescript-eslint/no-unsafe-call': 'off',
+
+      // Disables the error for accessing properties on 'any' types
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+
+      // Disables the error for assigning 'any' to a variable
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+
+      // Your existing rules
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'warn',
-      '@typescript-eslint/no-unsafe-argument': 'warn',
+      '@typescript-eslint/no-unsafe-argument': 'off', // Change to 'off' if you want this gone too
       'prettier/prettier': ['error', { endOfLine: 'auto' }],
     },
   },

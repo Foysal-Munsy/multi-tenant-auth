@@ -3,6 +3,8 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { OrganizationGuard } from './guards/organization.guard';
+import { RolesGuard } from './guards/roles.guard';
+import { Roles } from './decorators/roles.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -27,13 +29,18 @@ export class AuthController {
     };
   }
 
-  @Post('create-org')
-  createOrganization(@Body('org_name') orgName: string) {
-    return this.authService.createOrganization(orgName);
+  @Post('org/assign-user')
+  @UseGuards(OrganizationGuard, RolesGuard)
+  @Roles('owner')
+  assignUserToOrganization(
+    @Req() req,
+    @Body('user_id') userId: string,
+    @Body('role') role: string,
+  ) {
+    return this.authService.assignUserToOrganization(
+      userId,
+      req.organization.org_id,
+      role,
+    );
   }
-  // @Get('me')
-  // me(@Headers('authorization') auth: string) {
-  //   const token = auth.replace('Bearer ', '');
-  //   return this.authService.decode(token);
-  // }
 }
