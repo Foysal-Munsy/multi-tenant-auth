@@ -35,31 +35,79 @@ This project implements all of the above as a clean, layered backend service.
 
 ## Architecture
 
-Every inbound HTTP request passes through a two-layer guard pipeline before reaching business logic. Guards are NestJS `CanActivate` classes that run in order — if either throws, the request is rejected before any service code runs.
+Every HTTP request travels through a **two-layer guard pipeline** before any business logic runs. If either guard rejects the request, execution stops immediately — the controller never sees the call.
 
 ```mermaid
 flowchart TD
-    Client(["Client\nAuthorization: Bearer &lt;jwt&gt;\nX-Organization-Id: &lt;orgId&gt;"])
+    %% ── CLIENT ────────────────────────────────────────────────────
+    Client(["CLIENT
+    ──────────────────────
+    Authorization: Bearer JWT
+    X-Organization-Id: orgId"])
 
-    subgraph NestJS Application
-        OG["OrganizationGuard\n① Verify JWT signature\n② Match X-Organization-Id against token orgs[]\n③ Attach req.user + req.organization"]
-        RG["RolesGuard\n④ Read @Roles() metadata via Reflector\n⑤ Check org-scoped roles[] match"]
-        SVC["Controller → Service\nBusiness logic executes"]
+    %% ── GUARD 1 ───────────────────────────────────────────────────
+    subgraph OG["OrganizationGuard   src/auth/guards/organization.guard.ts"]
+        OG1["① Verify JWT signature
+        JwtService.verify()  — never .decode()"]
+        OG2["② Find orgId header
+        inside token.organizations array"]
+        OG3["③ Attach req.user and req.organization
+        so downstream code has tenant context"]
+        OG1 --> OG2 --> OG3
     end
 
-    DB[(MongoDB)]
+    %% ── GUARD 2 ───────────────────────────────────────────────────
+    subgraph RG["RolesGuard   src/auth/guards/roles.guard.ts"]
+        RG1["④ Read required roles
+        Reflector.getAllAndOverride( ROLES_KEY )"]
+        RG2["⑤ Check org-scoped roles
+        roles array includes required role"]
+        RG1 --> RG2
+    end
 
-    Client --> OG
-    OG -- "token invalid / org not in token" --> E401(["401 Unauthorized"])
-    OG --> RG
-    RG -- "role not satisfied" --> E403(["403 Forbidden"])
-    RG --> SVC
-    SVC <--> DB
-    SVC --> OK(["200 Response"])
+    %% ── APPLICATION ───────────────────────────────────────────────
+    subgraph APP["Application Layer   src/auth/  ·  src/tasks/"]
+        CT["Controller
+        Route handler"]
+        SV["Service
+        Business logic"]
+        CT --> SV
+    end
 
-    style E401 fill:#c0392b,color:#fff
-    style E403 fill:#e67e22,color:#fff
-    style OK fill:#27ae60,color:#fff
+    %% ── DATA ──────────────────────────────────────────────────────
+    DB[("MongoDB
+    ──────────
+    Users
+    Organizations
+    UserOrgMaps
+    Tasks")]
+
+    %% ── RESPONSES ─────────────────────────────────────────────────
+    E401(["401 Unauthorized"])
+    E403(["403 Forbidden"])
+    OK(["200 OK"])
+
+    %% ── HAPPY PATH ────────────────────────────────────────────────
+    Client --> OG1
+    OG3    --> RG1
+    RG2    --> CT
+    SV    <--> DB
+    SV     --> OK
+
+    %% ── ERROR PATHS ───────────────────────────────────────────────
+    OG1 -- "token invalid or expired"  --> E401
+    OG2 -- "org not found in token"    --> E401
+    RG2 -- "role not satisfied"        --> E403
+
+    %% ── STYLES ────────────────────────────────────────────────────
+    style Client fill:#1a5276,color:#fff,stroke:#154360
+    style OG     fill:#0d2137,stroke:#5dade2,color:#aed6f1
+    style RG     fill:#0d2112,stroke:#58d68d,color:#abebc6
+    style APP    fill:#2c2107,stroke:#f4d03f,color:#f9e79f
+    style DB     fill:#4a235a,color:#fff,stroke:#512e5f
+    style E401   fill:#c0392b,color:#fff,stroke:#922b21
+    style E403   fill:#e67e22,color:#fff,stroke:#ba4a00
+    style OK     fill:#27ae60,color:#fff,stroke:#1e8449
 ```
 
 ---
@@ -145,7 +193,7 @@ sequenceDiagram
             S->>S: role = "owner"
         end
         S->>DB: create UserOrgMap { user_id, org_id, role }
-        S-->>C: { message: "Registered as &lt;role&gt;" }
+        S-->>C: { message: "Registered as owner or member" }
     end
 
     rect rgb(20, 60, 50)
@@ -311,7 +359,26 @@ src/
 
 ## Running Locally
 
-**Prerequisites:** Node.js 20+ and MongoDB running on `localhost:27017`
+**Prerequisites:** MongoDB running on `localhost:27017`
+
+Both **Bun** and **npm** are supported — the repo has both `bun.lock` and `package-lock.json` committed. Use whichever you prefer.
+
+#### Using Bun (recommended — faster installs and dev startup)
+
+> Requires [Bun](https://bun.sh) installed (`curl -fsSL https://bun.sh/install | bash`)
+
+```bash
+# Install dependencies
+bun install
+
+# Start in development mode (watch)
+bun run start:dev
+
+# Production build
+bun run build && bun run start:prod
+```
+
+#### Using npm (requires Node.js 20+)
 
 ```bash
 # Install dependencies
@@ -324,9 +391,11 @@ npm run start:dev
 npm run build && npm run start:prod
 ```
 
-Override the default port:
+Override the default port (works with both):
 
 ```bash
+PORT=4000 bun run start:dev
+# or
 PORT=4000 npm run start:dev
 ```
 
