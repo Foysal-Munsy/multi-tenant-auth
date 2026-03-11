@@ -15,11 +15,9 @@ export class Task {
   @Prop({ trim: true })
   description?: string;
 
-  // Who created the task
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   created_by: Types.ObjectId;
 
-  // Optional: who the task is assigned to
   @Prop({ type: Types.ObjectId, ref: 'User' })
   assigned_to?: Types.ObjectId;
 

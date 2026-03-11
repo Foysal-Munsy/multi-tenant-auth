@@ -11,8 +11,6 @@ import { TasksService } from './tasks.service';
   imports: [
     MongooseModule.forFeature([{ name: Task.name, schema: TaskSchema }]),
 
-    // OrganizationGuard needs JwtService; easiest is to register JwtModule here too.
-    // Keep secret consistent with AuthModule.
     JwtModule.register({
       secret: 'JWT_SECRET',
       signOptions: { expiresIn: '1h' },

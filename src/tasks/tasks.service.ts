@@ -9,9 +9,6 @@ export class TasksService {
   constructor(@InjectModel(Task.name) private taskModel: Model<Task>) {}
 
   async createTask(orgId: string, creatorUserId: string, dto: CreateTaskDto) {
-    // This service assumes OrganizationGuard already validated the org context
-    // and RolesGuard already validated the caller's role.
-
     const title = (dto.title ?? '').trim();
     if (!title) {
       throw new BadRequestException('title is required');

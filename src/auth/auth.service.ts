@@ -28,10 +28,6 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    // Goal:
-    // - If org does NOT exist yet: create it and make the registering user the 'owner'
-    // - If org already exists: register user as a normal 'member'
-
     // 0. If the email already exists, treat this as "join/create another org"
     // and verify password instead of blocking registration.
     let user = await this.userModel.findOne({ email: dto.email });
